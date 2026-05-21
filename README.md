@@ -1,4 +1,4 @@
-# ⚡ SCADA — Analizador de Red Eléctrica
+#  SCADA — Analizador de Red Eléctrica
 
 Panel web de monitoreo eléctrico en tiempo real. Muestra potencia activa, aparente y reactiva, tensión, corriente, frecuencia, factor de potencia y consumo en kWh con su equivalente en pesos argentinos.
 
@@ -8,13 +8,13 @@ Panel web de monitoreo eléctrico en tiempo real. Muestra potencia activa, apare
 
 ---
 
-## 📸 Vista previa
+##  Vista previa
 
 > Panel oscuro estilo industrial con actualización automática, semáforo de estado y cálculo de costos en ARS.
 
 ---
 
-## ✅ Funcionalidades
+##  Funcionalidades
 
 - **Potencias** — activa (kW), aparente (kVA), reactiva (kVAr) y energía acumulada (kWh)
 - **Mediciones básicas** — tensión promedio (V), corriente total (A), frecuencia (Hz) y factor de potencia
@@ -26,7 +26,7 @@ Panel web de monitoreo eléctrico en tiempo real. Muestra potencia activa, apare
 
 ---
 
-## 🚀 Uso rápido
+##  Uso rápido
 
 No requiere instalación ni servidor. Es un único archivo HTML autocontenido.
 
@@ -45,7 +45,7 @@ O simplemente descargá el archivo y hacé doble clic.
 
 ---
 
-## ⚙️ Configuración de tarifa
+##  Configuración de tarifa
 
 Dentro del archivo `scada-analizador-red.html`, buscá estas dos constantes al inicio del bloque `<script>` y modificalas según tu categoría tarifaria:
 
@@ -56,7 +56,7 @@ const CARGO_FIJO = 4200; // $/mes — cargo fijo de distribuidora
 
 ---
 
-## 🔌 Integración con medidor real
+##  Integración con medidor real
 
 Actualmente el panel usa datos simulados. Para conectarlo a un medidor físico real existen tres caminos:
 
@@ -81,7 +81,7 @@ Algunos equipos modernos tienen servidor web integrado. En ese caso basta con ha
 
 ---
 
-## 📐 Estructura del proyecto
+##  Estructura del proyecto
 
 ```
 scada-analizador-red/
@@ -92,7 +92,7 @@ scada-analizador-red/
 
 ---
 
-## 🛠️ Tecnologías
+##  Tecnologías
 
 - HTML5 / CSS3 / JavaScript vanilla
 - Fuentes: [Barlow](https://fonts.google.com/specimen/Barlow) + [Share Tech Mono](https://fonts.google.com/specimen/Share+Tech+Mono) (Google Fonts)
@@ -100,7 +100,7 @@ scada-analizador-red/
 
 ---
 
-## 📋 Parámetros monitoreados
+##  Parámetros monitoreados
 
 | Parámetro | Unidad | Descripción |
 |---|---|---|
@@ -115,7 +115,7 @@ scada-analizador-red/
 
 ---
 
-## 🚦 Lógica del semáforo
+##  Lógica del semáforo
 
 | Estado | Color | Condición típica |
 |---|---|---|
@@ -127,7 +127,7 @@ Los umbrales son configurables en el código fuente.
 
 ---
 
-## 🗺️ Roadmap
+##  Roadmap
 
 - [ ] Conexión a medidor real vía Modbus TCP
 - [ ] Exportar historial a CSV
@@ -137,6 +137,6 @@ Los umbrales son configurables en el código fuente.
 
 ---
 
-## 📄 Licencia
+##  Licencia
 
 MIT — libre para uso personal y comercial.
