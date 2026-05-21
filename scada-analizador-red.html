@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCADA — Analizador de Red Eléctrica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #00c8ff;
+    --accent2: #0af0b0;
+    --warn: #ffb020;
+    --danger: #ff4545;
+    --text: #e8ecf4;
+    --text2: #8a92a6;
+    --text3: #525a6e;
+    --green: #32d074;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Barlow', sans-serif;
+    --cond: 'Barlow Condensed', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* Grid de fondo */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .header-titulo {
+    font-family: var(--cond);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .header-sub {
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  /* SEMÁFORO */
+  .semaforo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 8px 14px;
+  }
+  .led-group { display: flex; gap: 5px; align-items: center; }
+  .led {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    transition: all 0.4s;
+    position: relative;
+  }
+  .led::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .led-verde { background: #1a3a22; border: 1px solid #2d5c38; }
+  .led-verde.on { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px var(--green); }
+  .led-verde.on::after { background: radial-gradient(circle, rgba(50,208,116,0.3), transparent 70%); opacity: 1; }
+  .led-amarillo { background: #3a2e10; border: 1px solid #5c481a; }
+  .led-amarillo.on { background: var(--warn); border-color: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .led-amarillo.on::after { background: radial-gradient(circle, rgba(255,176,32,0.3), transparent 70%); opacity: 1; }
+  .led-rojo { background: #3a1010; border: 1px solid #5c1a1a; }
+  .led-rojo.on { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  .led-rojo.on::after { background: radial-gradient(circle, rgba(255,69,69,0.3), transparent 70%); opacity: 1; }
+  .estado-txt {
+    font-family: var(--cond);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    min-width: 60px;
+  }
+
+  .reloj {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  /* SECCIONES */
+  .seccion-label {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .seccion-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GRID DE CARDS */
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+  .grid4-2 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .card.acento::before { opacity: 1; }
+  .card.acento-warn::before { opacity: 1; background: var(--warn); }
+
+  .card-label {
+    font-size: 11px;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .card-val {
+    font-family: var(--mono);
+    font-size: 26px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .card-unit {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--cond);
+    letter-spacing: 0.05em;
+  }
+
+  /* BARRA FP */
+  .fp-track {
+    margin-top: 8px;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+  }
+  .fp-fill {
+    height: 3px;
+    border-radius: 2px;
+    background: var(--green);
+    transition: width 0.5s, background 0.5s;
+  }
+
+  /* CONSUMO */
+  .consumo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+
+  .consumo-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .consumo-header {
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .consumo-header-txt {
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+  .consumo-body { padding: 8px 0; }
+  .consumo-fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .consumo-fila:last-child { border-bottom: none; }
+  .consumo-fila:hover { background: rgba(255,255,255,0.02); }
+  .consumo-mes { font-size: 13px; color: var(--text2); }
+  .consumo-kwh { font-family: var(--mono); font-size: 13px; color: var(--text); }
+  .consumo-pesos { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* TOTALES HOY/MES */
+  .totales-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+  .total-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .total-card.hoy { border-top: 2px solid var(--accent2); }
+  .total-card.mes { border-top: 2px solid var(--accent); }
+  .total-tag {
+    font-family: var(--cond);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .total-kwh {
+    font-family: var(--mono);
+    font-size: 32px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .total-unit { font-size: 12px; color: var(--text3); }
+  .total-pesos {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--accent2);
+  }
+  .total-pesos.mes { color: var(--accent); }
+  .total-pesos-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+
+  /* BOTÓN SIMULAR */
+  .btn-sim {
+    font-family: var(--cond);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(0,200,255,0.06);
+    border: 1px solid rgba(0,200,255,0.2);
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-sim:hover {
+    background: rgba(0,200,255,0.12);
+    border-color: rgba(0,200,255,0.4);
+  }
+  .btn-sim:active { transform: scale(0.97); }
+
+  /* FOOTER */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .footer-txt { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* BLINK para valores en actualización */
+  @keyframes blink-val {
+    0% { opacity: 1; }
+    40% { opacity: 0.4; }
+    100% { opacity: 1; }
+  }
+  .blink { animation: blink-val 0.3s ease; }
+
+  @media (max-width: 600px) {
+    .grid4, .grid4-2 { grid-template-columns: repeat(2, 1fr); }
+    .consumo-grid, .totales-grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; gap: 12px; }
+    .header-right { align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-tag">⬡ SCADA · MEDICIÓN EN TIEMPO REAL</span>
+      <div class="header-titulo">Analizador de Red Eléctrica</div>
+      <div class="header-sub">Monitoreo de potencia · consumo · calidad de red</div>
+    </div>
+    <div class="header-right">
+      <div class="semaforo-wrap">
+        <div class="led-group">
+          <div class="led led-verde on" id="led-v"></div>
+          <div class="led led-amarillo" id="led-a"></div>
+          <div class="led led-rojo" id="led-r"></div>
+        </div>
+        <span class="estado-txt" id="estado-txt" style="color: var(--green)">Normal</span>
+        <button class="btn-sim" onclick="simular()">Simular ↺</button>
+      </div>
+      <div class="reloj" id="reloj">--</div>
+    </div>
+  </header>
+
+  <!-- POTENCIAS -->
+  <div class="seccion-label">Potencias</div>
+  <div class="grid4">
+    <div class="card acento">
+      <div class="card-label">Activa</div>
+      <div class="card-val" id="p-act">3.42</div>
+      <div class="card-unit">kW</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Aparente</div>
+      <div class="card-val" id="p-ap">3.71</div>
+      <div class="card-unit">kVA</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Reactiva</div>
+      <div class="card-val" id="p-re">1.43</div>
+      <div class="card-unit">kVAr</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Energía acumulada</div>
+      <div class="card-val" id="p-en">1847</div>
+      <div class="card-unit">kWh total</div>
+    </div>
+  </div>
+
+  <!-- MEDICIONES -->
+  <div class="seccion-label">Mediciones básicas</div>
+  <div class="grid4-2">
+    <div class="card">
+      <div class="card-label">Tensión promedio</div>
+      <div class="card-val" id="m-ten">226</div>
+      <div class="card-unit">V</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Corriente total</div>
+      <div class="card-val" id="m-cor">16.4</div>
+      <div class="card-unit">A</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Frecuencia</div>
+      <div class="card-val" id="m-frq">50.0</div>
+      <div class="card-unit">Hz</div>
+    </div>
+    <div class="card acento-warn">
+      <div class="card-label">Factor de potencia</div>
+      <div class="card-val" id="m-fp">0.92</div>
+      <div class="fp-track"><div class="fp-fill" id="fp-fill" style="width:92%"></div></div>
+      <div class="card-unit" style="margin-top:4px" id="fp-estado">Bueno</div>
+    </div>
+  </div>
+
+  <!-- CONSUMO HISTORIAL -->
+  <div class="seccion-label">Historial de consumo</div>
+  <div class="consumo-grid">
+    <div class="consumo-panel">
+      <div class="consumo-header">
+        <span class="consumo-header-txt">Meses anteriores</span>
+      </div>
+      <div class="consumo-body" id="historial-body"></div>
+    </div>
+    <div class="consumo-panel">
+      <div class="consumo-header">
+        <span class="consumo-header-txt" id="mes-actual-label">Mes actual</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text3)" id="dias-restantes">— días</span>
+      </div>
+      <div class="consumo-body">
+        <div class="consumo-fila">
+          <span class="consumo-mes">Proyección mensual</span>
+          <span class="consumo-kwh" id="proyeccion">~340 kWh</span>
+        </div>
+        <div class="consumo-fila">
+          <span class="consumo-mes">Consumo acumulado</span>
+          <span class="consumo-kwh" id="kwh-acum">312 kWh</span>
+        </div>
+        <div class="consumo-fila">
+          <span class="consumo-mes">Promedio diario</span>
+          <span class="consumo-kwh" id="prom-dia">-- kWh/día</span>
+        </div>
+        <div class="consumo-fila" style="background:rgba(0,200,255,0.04)">
+          <span class="consumo-mes" style="color:var(--accent)">Costo estimado mes</span>
+          <span class="consumo-kwh" style="color:var(--accent)" id="costo-mes">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOTALES -->
+  <div class="seccion-label">Totales del período</div>
+  <div class="totales-grid">
+    <div class="total-card hoy">
+      <div class="total-tag">Consumo de hoy</div>
+      <div class="total-kwh" id="tot-kwh-hoy">18.4</div>
+      <div class="total-unit">kWh</div>
+      <div class="total-pesos-label" style="margin-top:12px">Costo estimado hoy</div>
+      <div class="total-pesos" id="tot-pesos-hoy">$ 3.956</div>
+    </div>
+    <div class="total-card mes">
+      <div class="total-tag" id="tot-mes-label">Consumo del mes</div>
+      <div class="total-kwh" id="tot-kwh-mes">312</div>
+      <div class="total-unit">kWh</div>
+      <div class="total-pesos-label" style="margin-top:12px">Costo estimado + cargo fijo</div>
+      <div class="total-pesos mes" id="tot-pesos-mes">$ 71.280</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span class="footer-txt">Tarifa: $215/kWh · Cargo fijo: $4.200/mes</span>
+    <span class="footer-txt" id="update-txt">Última actualización: --</span>
+  </div>
+
+</div>
+
+<script>
+const TARIFA = 215;
+const CARGO_FIJO = 4200;
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const historial = [
+  { mes: 'Julio', kwh: 241 },
+  { mes: 'Agosto', kwh: 268 },
+  { mes: 'Septiembre', kwh: 254 },
+  { mes: 'Octubre', kwh: 233 },
+  { mes: 'Noviembre', kwh: 278 },
+];
+
+let kwhHoy = 18.4;
+let kwhMes = 312;
+let energia = 1847;
+
+function pesos(kwh, fijo = false) {
+  const val = Math.round(kwh * TARIFA + (fijo ? CARGO_FIJO : 0));
+  return '$ ' + val.toLocaleString('es-AR');
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  el.classList.remove('blink');
+  void el.offsetWidth;
+  el.classList.add('blink');
+}
+
+function setEstado(e) {
+  const vrd = document.getElementById('led-v');
+  const ama = document.getElementById('led-a');
+  const roj = document.getElementById('led-r');
+  const txt = document.getElementById('estado-txt');
+  vrd.className = 'led led-verde'; ama.className = 'led led-amarillo'; roj.className = 'led led-rojo';
+  if (e === 'normal') {
+    vrd.classList.add('on'); txt.textContent = 'Normal'; txt.style.color = 'var(--green)';
+  } else if (e === 'alerta') {
+    ama.classList.add('on'); txt.textContent = 'Alerta'; txt.style.color = 'var(--warn)';
+  } else {
+    roj.classList.add('on'); txt.textContent = 'Falla'; txt.style.color = 'var(--danger)';
+  }
+}
+
+function renderHistorial() {
+  const body = document.getElementById('historial-body');
+  body.innerHTML = historial.map(h =>
+    `<div class="consumo-fila">
+      <span class="consumo-mes">${h.mes}</span>
+      <div style="text-align:right">
+        <div class="consumo-kwh">${h.kwh} kWh</div>
+        <div class="consumo-pesos">${pesos(h.kwh, true)}</div>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function renderTotales() {
+  const now = new Date();
+  const mes = MESES[now.getMonth()];
+  const diasEnMes = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const diaActual = now.getDate();
+  const diasRestantes = diasEnMes - diaActual;
+  const promDia = kwhMes / diaActual;
+  const proyeccion = Math.round(promDia * diasEnMes);
+
+  document.getElementById('mes-actual-label').textContent = mes;
+  document.getElementById('dias-restantes').textContent = diasRestantes + ' días restantes';
+  document.getElementById('proyeccion').textContent = '~' + proyeccion + ' kWh';
+  document.getElementById('kwh-acum').textContent = kwhMes.toFixed(0) + ' kWh';
+  document.getElementById('prom-dia').textContent = promDia.toFixed(1) + ' kWh/día';
+  document.getElementById('costo-mes').textContent = pesos(kwhMes, true);
+
+  setVal('tot-kwh-hoy', kwhHoy.toFixed(1));
+  setVal('tot-pesos-hoy', pesos(kwhHoy));
+  document.getElementById('tot-mes-label').textContent = 'Consumo de ' + mes;
+  setVal('tot-kwh-mes', kwhMes.toFixed(0));
+  setVal('tot-pesos-mes', pesos(kwhMes, true));
+}
+
+function simular() {
+  const r = Math.random();
+  let tension, corriente, freq, fp;
+
+  if (r < 0.60) {
+    tension = (218 + Math.random()*14).toFixed(0);
+    corriente = (12 + Math.random()*6).toFixed(1);
+    freq = (49.9 + Math.random()*0.2).toFixed(1);
+    fp = (0.90 + Math.random()*0.09).toFixed(2);
+    setEstado('normal');
+  } else if (r < 0.85) {
+    tension = (204 + Math.random()*10).toFixed(0);
+    corriente = (22 + Math.random()*7).toFixed(1);
+    freq = (49.4 + Math.random()*0.5).toFixed(1);
+    fp = (0.78 + Math.random()*0.08).toFixed(2);
+    setEstado('alerta');
+  } else {
+    tension = (183 + Math.random()*12).toFixed(0);
+    corriente = (31 + Math.random()*6).toFixed(1);
+    freq = (48.7 + Math.random()*0.5).toFixed(1);
+    fp = (0.63 + Math.random()*0.1).toFixed(2);
+    setEstado('falla');
+  }
+
+  const pA = (corriente * tension * fp / 1000).toFixed(2);
+  const pR = (corriente * tension * Math.sqrt(1 - fp*fp) / 1000).toFixed(2);
+  const pAp = Math.sqrt(pA*pA + pR*pR).toFixed(2);
+
+  setVal('m-ten', tension);
+  setVal('m-cor', corriente);
+  setVal('m-frq', freq);
+  setVal('m-fp', fp);
+
+  const fpN = parseFloat(fp);
+  document.getElementById('fp-fill').style.width = (fpN * 100) + '%';
+  document.getElementById('fp-fill').style.background = fpN >= 0.90 ? 'var(--green)' : fpN >= 0.80 ? 'var(--warn)' : 'var(--danger)';
+  document.getElementById('fp-estado').textContent = fpN >= 0.90 ? 'Bueno' : fpN >= 0.80 ? 'Regular' : 'Bajo';
+
+  setVal('p-act', pA);
+  setVal('p-ap', pAp);
+  setVal('p-re', pR);
+
+  energia += Math.floor(Math.random() * 3);
+  setVal('p-en', energia.toLocaleString('es-AR'));
+
+  kwhHoy = parseFloat((kwhHoy + parseFloat((Math.random()*0.5).toFixed(2))).toFixed(1));
+  kwhMes = parseFloat((kwhMes + parseFloat((Math.random()*0.9).toFixed(2))).toFixed(1));
+  renderTotales();
+
+  document.getElementById('update-txt').textContent = 'Última actualización: ' + new Date().toLocaleTimeString('es-AR');
+}
+
+function tick() {
+  const now = new Date();
+  document.getElementById('reloj').textContent =
+    now.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' }) + ' — ' +
+    now.toLocaleTimeString('es-AR');
+}
+
+renderHistorial();
+renderTotales();
+tick();
+setInterval(tick, 1000);
+setInterval(() => { if (Math.random() < 0.35) simular(); }, 4000);
+</script>
+</body>
+</html>
